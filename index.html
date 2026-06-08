@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HVAC Architecture Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: #0d131f; color: white;}
+        
+        /* 左側欄位設計 */
+        #sidebar { width: 320px; background-color: #e5e7eb; color: #333; display: flex; flex-direction: column; border-right: 2px solid #ccc; overflow-y: auto; z-index: 10;}
+        .section-title { background-color: #888; color: white; padding: 12px; text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 2px;}
+        .item-list { padding: 10px; display: flex; flex-direction: column; gap: 8px;}
+        .drag-item { background-color: #0ea5e9; color: white; padding: 10px; text-align: center; cursor: grab; border-radius: 4px; font-weight: bold; border: 1px solid #0284c7;}
+        
+        /* 右側工作區設計 */
+        #workspace-container { flex: 1; display: flex; flex-direction: column; position: relative;}
+        #top-bar { height: 60px; display: flex; justify-content: flex-end; align-items: center; padding: 0 20px; gap: 15px; background-color: #1e293b; z-index: 10;}
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+        .btn-png { background-color: #fbbf24; color: #000; }
+        .btn-code { background-color: #f87171; color: white; }
+        .btn-reset { background-color: #9ca3af; color: white; }
+        .btn-link { background-color: #10b981; color: white; border: 2px solid transparent;}
+        .btn-link.active { background-color: #059669; border: 2px solid #fff; box-shadow: 0 0 10px #10b981;}
+        .btn-lang { background-color: #3b82f6; color: white; display: flex;}
+        .btn-lang span { padding: 5px 10px;}
+        .btn-lang .active { background-color: #2563eb; }
+        .btn-lang .inactive { background-color: #93c5fd; color: #1e3a8a; }
+
+        /* 畫布與 SVG 圖層 */
+        #canvas-wrapper { flex: 1; position: relative; overflow: hidden; background-color: #0d131f; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
+        #canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2;}
+        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;}
+        
+        /* 動態生成的冷卻元件樣式 */
+        .hvac-node { position: absolute; background-color: #1e293b; border: 2px solid #3b82f6; border-radius: 6px; padding: 10px; color: white; cursor: move; min-width: 120px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+        .hvac-node.selected-source { border-color: #10b981; box-shadow: 0 0 15px #10b981;}
+        .hvac-node input { width: 90%; margin-top: 5px; background: #333; border: 1px solid #555; color: white; text-align: center;}
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="section-title" data-i18n="module_selection">常用模組選擇</div>
+        <div class="item-list">
+            <div class="drag-item" draggable="true" data-type="module_water">Water-cooled Chiller System</div>
+            <div class="drag-item" draggable="true" data-type="module_air">Air-cooled Chiller System</div>
+            <div class="drag-item" draggable="true" data-type="module_dx">Direct Expansion, DX</div>
+            <div class="drag-item" draggable="true" data-type="module_free">Free Cooling</div>
+            <div class="drag-item" draggable="true" data-type="module_dry">Dry Cooler System</div>
+        </div>
+        <div class="section-title" data-i18n="element_selection" style="margin-top: auto;">單一元素選擇</div>
+        <div class="item-list">
+            <div class="drag-item" draggable="true" data-type="elem_cooling_tower">Cooling Tower</div>
+            <div class="drag-item" draggable="true" data-type="elem_pump_cs">Pump Constant Speed</div>
+            <div class="drag-item" draggable="true" data-type="elem_pump_vs">Pump Variable Speed</div>
+            <div class="drag-item" draggable="true" data-type="elem_chiller">Chiller</div>
+            <div class="drag-item" draggable="true" data-type="elem_dx">DX Condenser</div>
+            <div class="drag-item" draggable="true" data-type="elem_dry_cooler">Dry Cooler</div>
+            <div class="drag-item" draggable="true" data-type="elem_hex">Heat Exchanger</div>
+        </div>
+    </div>
+
+    <div id="workspace-container">
+        <div id="top-bar">
+            <button id="btn-link-mode" class="btn btn-link" onclick="toggleLinkMode()">Pipeline Mode: OFF</button>
+            <div style="flex-grow: 1;"></div>
+            
+            <div style="color: white; font-weight: bold;">Output</div>
+            <button class="btn btn-png" onclick="exportPNG()">PNG</button>
+            <button class="btn btn-code" onclick="exportCode()">Code</button>
+            <button class="btn btn-reset" onclick="resetCanvas()">Reset</button>
+            
+            <div style="margin-left: 20px; color: white; font-weight: bold;">Language</div>
+            <div class="btn btn-lang" onclick="toggleLanguage()" style="padding: 0; cursor: pointer;">
+                <span id="lang-en" class="active">EN</span>
+                <span id="lang-tw" class="inactive">TW</span>
+            </div>
+        </div>
+        
+        <div id="canvas-wrapper">
+            <svg id="svg-layer">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                    </marker>
+                </defs>
+            </svg>
+            <div id="canvas" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 中英文切換字典與邏輯
+        let currentLang = 'en';
+        const i18n = {
+            'en': {
+                'module_selection': 'Common Modules',
+                'element_selection': 'Single Elements',
+                'module_water': 'Water-cooled Chiller System',
+                'module_air': 'Air-cooled Chiller System',
+                'module_dx': 'Direct Expansion, DX',
+                'module_free': 'Free Cooling',
+                'module_dry': 'Dry Cooler System',
+                'elem_cooling_tower': 'Cooling Tower',
+                'elem_pump_cs': 'Pump Constant Speed',
+                'elem_pump_vs': 'Pump Variable Speed',
+                'elem_chiller': 'Chiller',
+                'elem_dx': 'DX Condenser',
+                'elem_dry_cooler': 'Dry Cooler',
+                'elem_hex': 'Heat Exchanger'
+            },
+            'tw': {
+                'module_selection': '常用模組選擇',
+                'element_selection': '單一元素選擇',
+                'module_water': '水冷式冰水系統',
+                'module_air': '氣冷式冰水系統',
+                'module_dx': '氣冷式直膨系統',
+                'module_free': '自然冷卻系統',
+                'module_dry': '乾冷器系統',
+                'elem_cooling_tower': '冷卻水塔',
+                'elem_pump_cs': '定頻式幫浦',
+                'elem_pump_vs': '變頻式幫浦',
+                'elem_chiller': '冰水機',
+                'elem_dx': '氣冷式冷凝器',
+                'elem_dry_cooler': '乾冷器',
+                'elem_hex': '板式熱交換器'
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'tw' : 'en';
+            document.getElementById('lang-en').className = currentLang === 'en' ? 'active' : 'inactive';
+            document.getElementById('lang-tw').className = currentLang === 'tw' ? 'active' : 'inactive';
+            
+            // 更新 UI 文字
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.innerText = i18n[currentLang][el.getAttribute('data-i18n')];
+            });
+            document.querySelectorAll('.drag-item').forEach(el => {
+                el.innerText = i18n[currentLang][el.getAttribute('data-type')];
+            });
+        }
+
+        // 2. 核心變數與連線模式控制
+        let nodeCounter = 0;
+        const nodesData = []; 
+        const connections = []; // 紀錄拓樸流向
+        let isLinkMode = false;
+        let selectedSourceNode = null;
+
+        function toggleLinkMode() {
+            isLinkMode = !isLinkMode;
+            const btn = document.getElementById('btn-link-mode');
+            if(isLinkMode) {
+                btn.className = 'btn btn-link active';
+                btn.innerText = 'Pipeline Mode: ON (Click Source -> Target)';
+            } else {
+                btn.className = 'btn btn-link';
+                btn.innerText = 'Pipeline Mode: OFF';
+                clearSourceSelection();
+            }
+        }
+
+        function clearSourceSelection() {
+            if(selectedSourceNode) {
+                document.getElementById(selectedSourceNode).classList.remove('selected-source');
+                selectedSourceNode = null;
+            }
+        }
+
+        // 3. 拖曳生成元件邏輯
+        document.querySelectorAll('.drag-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('type', e.target.getAttribute('data-type'));
+                e.dataTransfer.setData('name', e.target.innerText);
+            });
+        });
+
+        function allowDrop(e) { e.preventDefault(); }
+
+        function drop(e) {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('type');
+            const name = e.dataTransfer.getData('name');
+            if(!type) return;
+            const rect = document.getElementById('canvas').getBoundingClientRect();
+            createNode(type, name, e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function createNode(type, name, x, y) {
+            nodeCounter++;
+            const nodeId = `Node_${nodeCounter}`;
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'hvac-node';
+            nodeEl.style.left = `${x}px`;
+            nodeEl.style.top = `${y}px`;
+            nodeEl.id = nodeId;
+            
+            nodeEl.innerHTML = `
+                <div style="font-size: 12px; color: #93c5fd; pointer-events: none;">${name}</div>
+                <input type="text" value="${type.split('_').pop().toUpperCase()}_${nodeCounter}" id="input_${nodeId}">
+            `;
+            
+            // 元件點擊與畫布內拖拉邏輯
+            nodeEl.onmousedown = function(e) {
+                if(e.target.tagName === 'INPUT') return; 
+
+                // 若在 Pipeline 模式，處理點擊連線
+                if(isLinkMode) {
+                    if(!selectedSourceNode) {
+                        selectedSourceNode = nodeId;
+                        nodeEl.classList.add('selected-source');
+                    } else if (selectedSourceNode !== nodeId) {
+                        connections.push({ source: selectedSourceNode, target: nodeId });
+                        clearSourceSelection();
+                        drawPipelines(); 
+                    }
+                    return; 
+                }
+
+                // 一般模式拖拉
+                let shiftX = e.clientX - nodeEl.getBoundingClientRect().left;
+                let shiftY = e.clientY - nodeEl.getBoundingClientRect().top;
+                
+                function moveAt(pageX, pageY) {
+                    const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+                    nodeEl.style.left = pageX - shiftX - canvasRect.left + 'px';
+                    nodeEl.style.top = pageY - shiftY - canvasRect.top + 'px';
+                    drawPipelines(); // 拖曳時即時更新管線
+                }
+                
+                function onMouseMove(event) { moveAt(event.clientX, event.clientY); }
+                document.addEventListener('mousemove', onMouseMove);
+                
+                nodeEl.onmouseup = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    nodeEl.onmouseup = null;
+                };
+            };
+
+            document.getElementById('canvas').appendChild(nodeEl);
+            nodesData.push({ id: nodeId, type: type, originalName: name });
+        }
+
+        // 4. SVG 繪製管線邏輯
+        function drawPipelines() {
+            const svg = document.getElementById('svg-layer');
+            // 清空舊線段，保留箭頭定義
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                    </marker>
+                </defs>
+            `;
+            
+            const canvasRect = document.getElementById('canvas-wrapper').getBoundingClientRect();
+
+            connections.forEach(conn => {
+                const srcEl = document.getElementById(conn.source);
+                const tgtEl = document.getElementById(conn.target);
+                if(srcEl && tgtEl) {
+                    const rect1 = srcEl.getBoundingClientRect();
+                    const rect2 = tgtEl.getBoundingClientRect();
+
+                    const x1 = rect1.left - canvasRect.left + rect1.width / 2;
+                    const y1 = rect1.top - canvasRect.top + rect1.height / 2;
+                    const x2 = rect2.left - canvasRect.left + rect2.width / 2;
+                    const y2 = rect2.top - canvasRect.top + rect2.height / 2;
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    line.setAttribute('stroke', '#ef4444'); 
+                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                    svg.appendChild(line);
+                }
+            });
+        }
+
+        // 5. 工具列功能：Reset, Output PNG, Output Code
+        function resetCanvas() {
+            document.getElementById('canvas').innerHTML = '';
+            document.getElementById('svg-layer').innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" /></marker></defs>';
+            nodesData.length = 0;
+            connections.length = 0;
+            nodeCounter = 0;
+            clearSourceSelection();
+            if(isLinkMode) toggleLinkMode();
+        }
+
+        function exportPNG() {
+            html2canvas(document.getElementById('canvas-wrapper')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'HVAC_Architecture.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        function exportCode() {
+            // 抓取畫面上當前自定義的 Node ID
+            const topologyNodes = nodesData.map(n => {
+                const el = document.getElementById(n.id);
+                const customId = document.getElementById(`input_${n.id}`).value;
+                return {
+                    node_id: n.id,
+                    custom_id: customId,
+                    type: n.type,
+                    x_pos: el.style.left,
+                    y_pos: el.style.top
+                };
+            });
+            
+            // 替換連線中的 source 與 target 為自定義 ID
+            const topologyConnections = connections.map(c => {
+                const srcId = document.getElementById(`input_${c.source}`).value;
+                const tgtId = document.getElementById(`input_${c.target}`).value;
+                return {
+                    source: srcId,
+                    target: tgtId,
+                    flow_direction: "forward"
+                };
+            });
+            
+            const jsonStr = JSON.stringify({ nodes: topologyNodes, connections: topologyConnections }, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hvac_topology.json';
+            a.click();
+        }
+    </script>
+</body>
+</html>
