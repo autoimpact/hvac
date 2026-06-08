@@ -186,18 +186,8 @@
         
         /* 拖拉元件節點樣式 */
         .node { 
-            position: absolute; 
-            padding: 10px; 
-            cursor: grab; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            width: 140px; 
-            z-index: 10; 
-            border-radius: 8px;
-            border: 2px solid transparent;
-            transition: border-color 0.2s, background-color 0.2s;
+            position: absolute; padding: 10px; cursor: grab; ...
+    overflow: visible !important; /* 關鍵：強制解除遮蔽 */
         }
         .node:hover { 
             border-color: var(--brand-green); 
@@ -208,32 +198,26 @@
         
         /* 節點資訊卡片 */
         .node-info { 
-            background: #ffffff; 
-            padding: 6px; 
-            border-radius: 6px; 
-            border: 1px solid var(--border-dark); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            width: 100%; 
-            margin-top: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            background: #ffffff; padding: 6px; border-radius: 6px; 
+    width: 110px; /* 給予固定寬度 */
+    overflow: visible !important; /* 關鍵：確保文字可超出容器 */
         }
         .node .node-title { font-weight: 600; font-size: 0.8rem; margin-bottom: 4px; text-align: center; pointer-events: none; color: var(--text-primary); }
         .node input { 
-            width: 90%; 
-            background: var(--bg-base); 
-            border: 1px solid var(--border-light); 
-            color: var(--brand-blue); 
-            font-weight: bold;
-            text-align: center; 
-            border-radius: 4px; 
-            padding: 4px; 
-            font-size: 0.75rem; 
-            outline: none;
-            transition: border 0.2s;
+            ...
+    min-height: 24px; /* 保證字體有足夠空間 */
+    line-height: 1.4;
+    box-sizing: border-box;
         }
         .node input:focus { border-color: var(--brand-cyan); background: #fff;}
+         /* 新增 */
+       .node .static-id-text {
+    display: none; /* 平時隱藏 */
+    width: 100%; color: var(--brand-blue); font-weight: bold;
+    text-align: center; font-size: 0.75rem;
+    line-height: 1.4; padding: 4px 0;
+    min-height: 24px; box-sizing: border-box;
+}
         
         /* 刪除節點按鈕 */
         .delete-node-btn { 
@@ -486,14 +470,15 @@
         
         const deleteBtnHtml = isDeletable ? `<div class="delete-node-btn" onclick="deleteNode(event, '${nodeObj.id}')" title="Delete">✖</div>` : '';
 
-        nodeEl.innerHTML = `
+        nodeEl.innerHTML =`
             ${deleteBtnHtml}
             <img src="${componentImages[type]}" alt="${type}">
             <div class="node-info">
                 <div class="node-title" data-key="${type}">${i18n[currentLang].components[type]}</div>
-                <input type="text" value="${nodeObj.customId}" onchange="updateNodeId('${nodeObj.id}', this.value)" spellcheck="false">
+                <input type="text" class="node-id-input" value="${nodeObj.customId}" onchange="updateNodeId('${nodeObj.id}', this.value)" spellcheck="false">
+                <span class="static-id-text">${nodeObj.customId}</span>
             </div>
-        `;
+`;
 
         nodeEl.addEventListener('click', (e) => {
             if (isConnecting) handleNodeClickForConnection(nodeObj.id);
@@ -697,12 +682,26 @@
         link.click();
         link.remove();
     }
-
+    function syncAllStaticTexts() {
+    nodes.forEach(node => {
+        const nodeEl = document.getElementById(node.id);
+        if (nodeEl) {
+            const val = nodeEl.querySelector('.node-id-input').value;
+            nodeEl.querySelector('.static-id-text').innerText = val;
+        }
+    });
+}
+    
     function exportPNG() {
         const workspace = document.getElementById('workspace');
+        
+        syncAllStaticTexts(); // 強制同步
+    
+        // 截圖前：隱藏操作按鈕，切換 input 為 span
         document.getElementById('connection-controls').style.display = 'none'; 
-        document.getElementById('flaticon-attribution').style.display = 'none';
         document.querySelectorAll('.delete-node-btn').forEach(btn => btn.style.display = 'none');
+        document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'none');
+        document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'block');
         
         html2canvas(workspace, { backgroundColor: '#f4f7f9', scale: 2 }).then(canvas => {
             const link = document.createElement('a');
@@ -710,9 +709,11 @@
             link.href = canvas.toDataURL('image/png');
             link.click();
             
+            // 截圖後：還原狀態
             document.getElementById('connection-controls').style.display = 'flex'; 
-            document.getElementById('flaticon-attribution').style.display = 'block';
             document.querySelectorAll('.delete-node-btn').forEach(btn => btn.style.display = 'flex');
+            document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'block');
+            document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'none');
         });
     }
 
