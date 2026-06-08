@@ -2,199 +2,780 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HVAC System Builder Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* 品牌與商用核心配色變數 */
         :root {
-            --brand-blue: #0087DC; --brand-cyan: #64D7D7; --brand-green: #B9EB5F;
-            --bg-base: #f4f7f9; --bg-panel: #ffffff; --border-dark: #cbd5e1;
-            --cold-pipe: #0087DC; --hot-pipe: #ef4444;
+            --brand-blue: #0087DC;    /* 核心藍 - 主按鈕、冷管 */
+            --brand-cyan: #64D7D7;    /* 核心青 - 懸停、次要操作 */
+            --brand-green: #B9EB5F;   /* 核心綠 - 強調、選取框 */
+            
+            --bg-base: #f4f7f9;       /* 畫布淺灰白底色 */
+            --bg-panel: #ffffff;      /* 面板純白底色 */
+            --border-light: #e2e8f0;  /* 淺灰邊框 */
+            --border-dark: #cbd5e1;   /* 深灰邊框 */
+            
+            --text-primary: #1e293b;  /* 灰黑文字 - 主標題 */
+            --text-secondary: #475569;/* 灰黑文字 - 次標題/提示 */
+            
+            --cold-pipe: #0087DC;     /* 冷水管使用核心藍 */
+            --hot-pipe: #ef4444;      /* 熱水管保留HVAC標準紅 */
         }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: var(--bg-base); }
-        
-        #sidebar { width: 320px; background: var(--bg-panel); border-right: 1px solid var(--border-dark); z-index: 50; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; font-weight: 700; border-bottom: 1px solid var(--border-dark); border-left: 6px solid var(--brand-blue); }
-        .component-list { padding: 20px 15px; overflow-y: auto; flex: 1; }
-        .component-btn { width: 100%; padding: 12px; margin-bottom: 10px; background: white; border: 1px solid var(--border-dark); cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
-        .component-btn:hover { border-color: var(--brand-cyan); box-shadow: 0 4px 8px rgba(100,215,215,0.2); }
-        .component-btn img { height: 38px; mix-blend-mode: multiply; }
-        
-        #main { flex: 1; display: flex; flex-direction: column; position: relative; }
-        #toolbar { height: 64px; padding: 0 25px; display: flex; align-items: center; gap: 15px; background: var(--bg-panel); border-bottom: 1px solid var(--border-dark); }
-        .tool-btn { padding: 8px 16px; border: 1px solid var(--border-dark); cursor: pointer; border-radius: 4px; font-weight: 600; background: white; }
-        .btn-output { background: var(--brand-blue); color: white; border: none; }
-        
-        /* Language Switch */
-        .switch-container { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; }
-        .lang-label { color: var(--text-secondary); transition: 0.2s; }
-        .lang-label.active { color: var(--brand-blue); }
-        .switch { position: relative; display: inline-block; width: 42px; height: 22px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-dark); transition: .3s; border-radius: 22px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--brand-cyan); }
-        input:checked + .slider:before { transform: translateX(20px); }
 
-        /* Workspace */
-        #workspace { flex: 1; position: relative; overflow: hidden; background-image: radial-gradient(var(--border-dark) 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; }
-        #transform-wrapper { position: absolute; transform-origin: 0 0; width: 5000px; height: 5000px; }
+        body { 
+            margin: 0; 
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+        }
+        
+        /* 側邊欄樣式 */
+        #sidebar { 
+            width: 320px; 
+            background: var(--bg-panel); 
+            border-right: 1px solid var(--border-dark); 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 2px 0 15px rgba(0,0,0,0.03);
+            z-index: 50;
+        }
+        .sidebar-header { 
+            padding: 20px; 
+            font-size: 1.15rem; 
+            font-weight: 700; 
+            border-bottom: 1px solid var(--border-light); 
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            border-left: 6px solid var(--brand-blue); 
+        }
+        .component-list { padding: 20px 15px; overflow-y: auto; flex: 1; }
+        
+        /* 側邊欄按鈕 */
+        .component-btn { 
+            width: 100%; 
+            padding: 12px 15px; 
+            margin-bottom: 12px; 
+            background: var(--bg-panel); 
+            color: var(--text-primary); 
+            border: 1px solid var(--border-light); 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-size: 0.95rem; 
+            font-weight: 500;
+            text-align: left; 
+            transition: all 0.2s ease; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .component-btn:hover { 
+            border-color: var(--brand-cyan); 
+            box-shadow: 0 4px 8px rgba(100, 215, 215, 0.15); 
+            transform: translateY(-1px);
+        }
+        .component-btn img { 
+            height: 38px; 
+            padding: 2px; 
+            mix-blend-mode: multiply; 
+        }
+        
+        /* 工作區與工具列樣式 */
+        #main { flex: 1; display: flex; flex-direction: column; position: relative; }
+        #toolbar { 
+            height: 64px;
+            padding: 0 25px; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+            gap: 12px; 
+            background: var(--bg-panel); 
+            border-bottom: 1px solid var(--border-dark); 
+            box-sizing: border-box;
+            z-index: 40;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        #conn-hint { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+        
+        /* 通用工具按鈕 */
+        .tool-btn { 
+            padding: 8px 16px; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            font-size: 0.85rem;
+            transition: all 0.2s ease; 
+        }
+        .btn-reset { background: #e2e8f0; color: var(--text-secondary); border: 1px solid var(--border-dark); }
+        .btn-reset:hover { background: #cbd5e1; color: var(--text-primary); }
+        .btn-output { background: var(--brand-blue); color: white; }
+        .btn-output:hover { background: var(--brand-cyan); color: #fff; } 
+        
+        /* 語言切換滑動開關樣式 */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            user-select: none;
+            margin-left: 10px;
+        }
+        .lang-label {
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+        .lang-label.active {
+            color: var(--brand-blue);
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 22px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-dark);
+            transition: .3s;
+            border-radius: 22px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        input:checked + .slider {
+            background-color: var(--brand-cyan);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* 畫布區域 (加入工程圖網格) */
+        #workspace { 
+            flex: 1; 
+            position: relative; 
+            overflow: hidden; 
+            background-color: var(--bg-base);
+            background-image: radial-gradient(var(--border-dark) 1px, transparent 1px);
+            background-size: 20px 20px; 
+        }
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
-        .node { position: absolute; padding: 10px; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 140px; border: 2px solid transparent; border-radius: 8px; transition: border 0.2s; overflow: visible !important; }
-        .node:hover { border-color: var(--brand-green); background: rgba(185,235,95,0.05); }
-        .node img { width: 100px; pointer-events: none; }
-        .node-info { background: #fff; padding: 6px; border-radius: 6px; border: 1px solid var(--border-dark); width: 110px; margin-top: 8px; }
-        .node input, .static-id-text { width: 95%; background: var(--bg-base); border: 1px solid var(--border-dark); color: var(--brand-blue); font-weight: bold; text-align: center; border-radius: 4px; padding: 4px; font-size: 0.75rem; box-sizing: border-box; }
-        .static-id-text { display: none; }
+        /* 拖拉元件節點樣式 */
+        .node { 
+            position: absolute; 
+            padding: 10px; 
+            cursor: grab; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            width: 140px; 
+            z-index: 10; 
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: border-color 0.2s, background-color 0.2s;
+            overflow: visible !important; /* 確保導出時不遮蔽文字 */
+        }
+        .node:hover { 
+            border-color: var(--brand-green); 
+            background-color: rgba(185, 235, 95, 0.1); 
+        }
+        .node:active { cursor: grabbing; }
+        .node img { width: 100px; height: auto; pointer-events: none; }
         
-        .delete-node-btn { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; z-index: 20; }
-        .node:hover .delete-node-btn { opacity: 1; }
-        .node.no-delete .delete-node-btn { display: none; }
+        /* 節點資訊卡片面板 */
+        .node-info { 
+            background: #ffffff; 
+            padding: 6px; 
+            border-radius: 6px; 
+            border: 1px solid var(--border-dark); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            width: 110px; /* 給予明確內部寬度 */
+            margin-top: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            overflow: visible !important;
+        }
+        .node .node-title { 
+            font-weight: 600; 
+            font-size: 0.8rem; 
+            margin-bottom: 6px; 
+            text-align: center; 
+            pointer-events: none; 
+            color: var(--text-primary); 
+            line-height: 1.2;
+        }
+        
+        /* 編輯狀態的 input (優化高度與行高) */
+        .node input { 
+            width: 95%; 
+            background: var(--bg-base); 
+            border: 1px solid var(--border-light); 
+            color: var(--brand-blue); 
+            font-weight: bold;
+            text-align: center; 
+            border-radius: 4px; 
+            padding: 4px 2px; 
+            font-size: 0.75rem; 
+            line-height: 1.4;
+            min-height: 24px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border 0.2s;
+            display: block;
+        }
+        .node input:focus { border-color: var(--brand-cyan); background: #fff;}
 
-        #connection-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: white; padding: 10px 20px; border-radius: 30px; border: 1px solid var(--border-dark); display: flex; gap: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .pipe-btn { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; border: 2px solid; background: white; }
-        .btn-cold { color: var(--cold-pipe); border-color: var(--cold-pipe); }
-        .btn-hot { color: var(--hot-pipe); border-color: var(--hot-pipe); }
-        #flaticon-attribution { position: absolute; bottom: 10px; right: 20px; color: var(--text-secondary); font-size: 11px; }
+        /* 導出 PNG 時專用的靜態文字樣式 (解決遮蔽的關鍵) */
+        .node .static-id-text {
+            display: none;
+            width: 100%;
+            color: var(--brand-blue); 
+            font-weight: bold;
+            text-align: center; 
+            font-size: 0.75rem;
+            line-height: 1.4;
+            padding: 4px 0;
+            min-height: 24px;
+            box-sizing: border-box;
+            word-break: break-all;
+            overflow: visible;
+        }
+        
+        /* 刪除節點按鈕 */
+        .delete-node-btn { 
+            position: absolute; 
+            top: -8px; 
+            right: -8px; 
+            background: #ef4444; 
+            color: white; 
+            border-radius: 50%; 
+            width: 22px; 
+            height: 22px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 12px; 
+            cursor: pointer; 
+            opacity: 0; 
+            transition: all 0.2s ease; 
+            z-index: 20; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+        }
+        .delete-node-btn:hover { transform: scale(1.15); background: #dc2626; }
+        .node:hover .delete-node-btn { opacity: 1; }
+        .node.no-delete:hover .delete-node-btn { display: none; }
+
+        /* 底部連線控制面板 */
+        #connection-controls { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: #ffffff; 
+            padding: 10px 15px; 
+            border-radius: 30px; 
+            z-index: 100; 
+            border: 1px solid var(--border-dark); 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+        }
+        .pipe-btn { 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 0.9rem;
+            transition: all 0.2s ease; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+        }
+        .pipe-btn::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .btn-cold { color: var(--cold-pipe); border: 2px solid var(--cold-pipe); }
+        .btn-cold::before { background: var(--cold-pipe); }
+        .btn-cold:hover { background-color: var(--cold-pipe); color: white; }
+        .btn-cold:hover::before { background: white; }
+        
+        .btn-hot { color: var(--hot-pipe); border: 2px solid var(--hot-pipe); }
+        .btn-hot::before { background: var(--hot-pipe); }
+        .btn-hot:hover { background-color: var(--hot-pipe); color: white; }
+        .btn-hot:hover::before { background: white; }
+
+        /* Flaticon 聲明 */
+        #flaticon-attribution { 
+            position: absolute; 
+            bottom: 10px; 
+            right: 20px; 
+            color: var(--text-secondary); 
+            font-size: 11px; 
+            z-index: 5; 
+            text-align: right; 
+            pointer-events: auto;
+        }
+        #flaticon-attribution a { color: var(--brand-blue); text-decoration: none; font-weight: 500;}
+        #flaticon-attribution a:hover { color: var(--brand-cyan); text-decoration: underline; }
+
+        /* 管線發光效果 */
+        .glow-cold { filter: drop-shadow(0 0 2px rgba(0, 135, 220, 0.4)); }
+        .glow-hot { filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4)); }
     </style>
 </head>
 <body>
+
     <div id="sidebar">
-        <div class="sidebar-header">Components</div>
-        <div class="component-list" id="component-list"></div>
+        <div class="sidebar-header" id="sidebar-title">Components Library</div>
+        <div class="component-list" id="component-list">
+            </div>
     </div>
+
     <div id="main">
         <div id="toolbar">
-            <span id="conn-hint">💡 滾輪縮放 | 空白鍵+拖曳平移</span>
-            <button class="tool-btn" onclick="resetCanvas()">Reset</button>
-            <button class="tool-btn btn-output" onclick="exportCode()">Export JSON</button>
+            <span id="conn-hint">💡 提示：點擊元件可拖拉，游標移至元件或管線上可點擊刪除。</span>
+            <button class="tool-btn btn-reset" onclick="resetCanvas()" id="btn-reset">Reset Layout</button>
+            <div style="width: 1px; height: 20px; background: var(--border-dark); margin: 0 10px;"></div>
+            <button class="tool-btn btn-output" onclick="exportCode()"></> Export JSON</button>
             <button class="tool-btn btn-output" onclick="exportPNG()">Export PNG</button>
+            <div style="width: 1px; height: 20px; background: var(--border-dark); margin: 0 10px;"></div>
+            
             <div class="switch-container">
                 <span id="lang-label-en" class="lang-label active">EN</span>
-                <label class="switch"><input type="checkbox" id="lang-switch" onchange="toggleLanguage()"><span class="slider"></span></label>
+                <label class="switch">
+                    <input type="checkbox" id="lang-switch" onchange="toggleLanguage()">
+                    <span class="slider"></span>
+                </label>
                 <span id="lang-label-tw" class="lang-label">繁中</span>
             </div>
         </div>
+
         <div id="workspace">
-            <div id="transform-wrapper">
-                <svg id="svg-layer"><defs></defs></svg>
-            </div>
+            <svg id="svg-layer">
+                <defs></defs>
+            </svg>
+            
             <div id="connection-controls">
                 <button class="pipe-btn btn-cold" onclick="startConnecting('cold')">Cold Pipe</button>
                 <button class="pipe-btn btn-hot" onclick="startConnecting('hot')">Hot Pipe</button>
             </div>
-            <div id="flaticon-attribution">Icons from Flaticon</div>
+
+            <div id="flaticon-attribution">
+                Icons made by <a href="https://www.flaticon.com/authors/freepik" target="_blank">Freepik</a>, 
+                <a href="https://www.flaticon.com/authors/flat-icons" target="_blank">Flat Icons</a>,
+                <a href="https://www.flaticon.com/authors/vectors-market" target="_blank">Vectors Market</a><br>
+                from <a href="https://www.flaticon.com/" target="_blank">www.flaticon.com</a>
+            </div>
         </div>
     </div>
 
 <script>
+    // --- 圖片資料區塊 (請貼上您的 8 組 Base64 字串) ---
     const componentImages = {
-        'Chiller': 'data:image/png;base64,...',
-        'Pump-CS': 'data:image/png;base64,...',
-        'Pump-VS': 'data:image/png;base64,...',
-        'Cooling Tower': 'data:image/png;base64,...',
-        'DX Outdoor': 'data:image/png;base64,...',
-        'Dry Cooler': 'data:image/png;base64,...',
+        'Chiller': 'data:image/png;base64,...',           
+        'Pump-CS': 'data:image/png;base64,...',           
+        'Pump-VS': 'data:image/png;base64,...',           
+        'Cooling Tower': 'data:image/png;base64,...',     
+        'DX Outdoor': 'data:image/png;base64,...',        
+        'Dry Cooler': 'data:image/png;base64,...',        
         'Heat Exchanger': 'data:image/png;base64,...',
-        'Data Center': 'data:image/png;base64,...'
+        'Data Center': 'data:image/png;base64,...' 
     };
 
+    // --- 語系與狀態資料 ---
     const i18n = {
-        'tw': { title: '設備元件庫', reset: '重置架構', hint: '💡 提示：點擊元件可拖拉，游標移至元件或管線上可點擊刪除。', deleteNodeConfirm: '確定刪除？', deletePipeConfirm: '確定刪除管線？', components: { 'Chiller': '冰水機', 'Pump-CS': '定頻幫浦', 'Pump-VS': '變頻幫浦', 'Cooling Tower': '冷卻水塔', 'DX Outdoor': '氣冷室外機', 'Dry Cooler': '乾冷器', 'Heat Exchanger': '板式熱交換器', 'Data Center': 'Data Center' } },
-        'en': { title: 'Components Library', reset: 'Reset Layout', hint: '💡 Hint: Drag to move. Hover over node or pipe to delete.', deleteNodeConfirm: 'Delete component?', deletePipeConfirm: 'Delete pipeline?', components: { 'Chiller': 'Chiller', 'Pump-CS': 'Pump-CS', 'Pump-VS': 'Pump-VS', 'Cooling Tower': 'Cooling Tower', 'DX Outdoor': 'DX Outdoor', 'Dry Cooler': 'Dry Cooler', 'Heat Exchanger': 'Heat Exchanger', 'Data Center': 'Data Center' } }
+        'tw': {
+            title: '設備元件庫', reset: '重置架構', 
+            hint: '💡 提示：點擊元件可拖拉，游標移至元件或管線上可點擊刪除。',
+            deleteNodeConfirm: '確定要刪除這個元件嗎？\n(與其相連的管線幕也會一併清除)',
+            deletePipeConfirm: '確定要刪除這條管線嗎？',
+            coldPipeStart: '<span style="color:var(--cold-pipe);">選擇第一個元件 (正在建立冷水管線)...</span>',
+            hotPipeStart: '<span style="color:var(--hot-pipe);">選擇第一個元件 (正在建立熱水管線)...</span>',
+            components: {
+                'Chiller': '冰水機', 'Pump-CS': '定頻式幫浦', 'Pump-VS': '變頻式幫浦',
+                'Cooling Tower': '冷卻水塔', 'DX Outdoor': '氣冷室外機', 'Dry Cooler': '乾冷器', 
+                'Heat Exchanger': '板式熱交換器', 'Data Center': 'Data Center'
+            }
+        },
+        'en': {
+            title: 'Components Library', reset: 'Reset Layout', 
+            hint: '💡 Hint: Drag to move. Hover over node or pipe to delete.',
+            deleteNodeConfirm: 'Delete this component?\n(Connected pipelines will also be removed)',
+            deletePipeConfirm: 'Delete this pipeline?',
+            coldPipeStart: '<span style="color:var(--cold-pipe);">Select first component (Routing Cold Pipe)...</span>',
+            hotPipeStart: '<span style="color:var(--hot-pipe);">Select first component (Routing Hot Pipe)...</span>',
+            components: {
+                'Chiller': 'Chiller', 'Pump-CS': 'Pump-Constant Speed', 'Pump-VS': 'Pump-Variable Speed',
+                'Cooling Tower': 'Cooling Tower', 'DX Outdoor': 'DX Outdoor', 'Dry Cooler': 'Dry Cooler', 
+                'Heat Exchanger': 'Heat Exchanger', 'Data Center': 'Data Center'
+            }
+        }
     };
 
-    let nodes = [], pipelines = [], scale = 1, transX = 0, transY = 0, isConnecting = false, currentPipeType = null, firstNode = null, currentLang = 'en';
-    const wrapper = document.getElementById('transform-wrapper');
-
-    document.getElementById('workspace').addEventListener('wheel', e => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; scale = Math.min(Math.max(scale * delta, 0.5), 2); applyTransform(); });
-
-    let isPanning = false, lastX, lastY;
-    document.getElementById('workspace').addEventListener('mousedown', e => { if(e.code === 'Space' || e.button === 1) { isPanning = true; lastX = e.clientX; lastY = e.clientY; } });
-    window.addEventListener('mousemove', e => { if(!isPanning) return; transX += (e.clientX - lastX); transY += (e.clientY - lastY); lastX = e.clientX; lastY = e.clientY; applyTransform(); });
-    window.addEventListener('mouseup', () => isPanning = false);
-    function applyTransform() { wrapper.style.transform = `scale(${scale}) translate(${transX/scale}px, ${transY/scale}px)`; }
+    let currentLang = 'en'; 
+    let nodes = [];
+    let pipelines = [];
+    let nodeIdCounter = 1;
+    let isConnecting = false;
+    let currentPipeType = null;
+    let firstNode = null;
 
     function renderSidebar() {
-        const list = document.getElementById('component-list'); list.innerHTML = '';
+        const list = document.getElementById('component-list');
+        list.innerHTML = '';
+        document.getElementById('sidebar-title').innerText = i18n[currentLang].title;
+        document.getElementById('btn-reset').innerText = i18n[currentLang].reset;
+        document.getElementById('conn-hint').innerText = i18n[currentLang].hint;
+        
         Object.keys(i18n.en.components).forEach(key => {
-            if (key === 'Data Center') return;
+            if (key === 'Data Center') return; 
             const btn = document.createElement('button');
             btn.className = 'component-btn';
-            btn.innerHTML = `<span>${i18n[currentLang].components[key]}</span> <img src="${componentImages[key]}">`;
+            btn.innerHTML = `<span>${i18n[currentLang].components[key]}</span> <img src="${componentImages[key]}" alt="${key}">`;
             btn.onclick = () => addNode(key);
             list.appendChild(btn);
         });
     }
 
     function toggleLanguage() {
-        currentLang = document.getElementById('lang-switch').checked ? 'tw' : 'en';
-        document.getElementById('lang-label-tw').classList.toggle('active', currentLang === 'tw');
-        document.getElementById('lang-label-en').classList.toggle('active', currentLang === 'en');
+        const switchEl = document.getElementById('lang-switch');
+        currentLang = switchEl.checked ? 'tw' : 'en';
+        
+        if (currentLang === 'tw') {
+            document.getElementById('lang-label-tw').classList.add('active');
+            document.getElementById('lang-label-en').classList.remove('active');
+        } else {
+            document.getElementById('lang-label-en').classList.add('active');
+            document.getElementById('lang-label-tw').classList.remove('active');
+        }
+
         renderSidebar();
-        document.querySelectorAll('.node-title').forEach(el => el.innerText = i18n[currentLang].components[el.dataset.key]);
+        document.querySelectorAll('.node-title').forEach(el => {
+            const baseKey = el.dataset.key;
+            el.innerText = i18n[currentLang].components[baseKey];
+        });
     }
 
     function addNode(type, isDeletable = true) {
-        const nodeObj = { id: 'n'+Date.now(), type, customId: type==='Data Center'?'Data_Center':type.replace(/ /g,'_')+'_'+nodes.length, x: type==='Data Center'?50:250, y: type==='Data Center'?50:150 };
+        const workspace = document.getElementById('workspace');
+        
+        let initialX = 250 + (nodes.length * 30) % 400;
+        let initialY = 150 + (nodes.length * 30) % 300;
+        
+        if (!isDeletable && type === 'Data Center') {
+            initialX = 50;
+            initialY = 50;
+        }
+
+        const nodeObj = {
+            id: `node_${nodeIdCounter++}`,
+            type: type,
+            customId: type === 'Data Center' ? 'Data_Center' : `${type.replace(/ /g, '_')}_${nodeIdCounter-1}`,
+            x: initialX, 
+            y: initialY
+        };
         nodes.push(nodeObj);
-        const el = document.createElement('div');
-        el.className = `node ${!isDeletable?'no-delete':''}`; el.id = nodeObj.id;
-        el.style.left = nodeObj.x + 'px'; el.style.top = nodeObj.y + 'px';
-        el.innerHTML = `${isDeletable ? `<div class="delete-node-btn" onclick="deleteNode(event, '${nodeObj.id}')">✖</div>` : ''}<img src="${componentImages[type]}"><div class="node-info"><div class="node-title" data-key="${type}">${i18n[currentLang].components[type]}</div><input type="text" class="node-id-input" value="${nodeObj.customId}"><span class="static-id-text">${nodeObj.customId}</span></div>`;
-        wrapper.appendChild(el);
-        el.addEventListener('mousedown', e => { if(e.target.tagName==='INPUT' || isConnecting || e.target.classList.contains('delete-node-btn')) return; let sx=e.clientX, sy=e.clientY; const move = e => { el.style.left = (parseInt(el.style.left) + (e.clientX-sx)/scale) + 'px'; el.style.top = (parseInt(el.style.top) + (e.clientY-sy)/scale) + 'px'; sx=e.clientX; sy=e.clientY; drawPipelines(); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move)); });
-        el.onclick = () => isConnecting && handleNodeClickForConnection(nodeObj.id);
+
+        const nodeEl = document.createElement('div');
+        nodeEl.className = `node ${!isDeletable ? 'no-delete' : ''}`;
+        nodeEl.id = nodeObj.id;
+        nodeEl.style.left = nodeObj.x + 'px';
+        nodeEl.style.top = nodeObj.y + 'px';
+        
+        const deleteBtnHtml = isDeletable ? `<div class="delete-node-btn" onclick="deleteNode(event, '${nodeObj.id}')" title="Delete">✖</div>` : '';
+
+        nodeEl.innerHTML = `
+            ${deleteBtnHtml}
+            <img src="${componentImages[type]}" alt="${type}">
+            <div class="node-info">
+                <div class="node-title" data-key="${type}">${i18n[currentLang].components[type]}</div>
+                <input type="text" class="node-id-input" value="${nodeObj.customId}" onchange="updateNodeId('${nodeObj.id}', this.value)" spellcheck="false">
+                <span class="static-id-text">${nodeObj.customId}</span>
+            </div>
+        `;
+
+        nodeEl.addEventListener('click', (e) => {
+            if (isConnecting) handleNodeClickForConnection(nodeObj.id);
+        });
+
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        nodeEl.addEventListener('mousedown', (e) => {
+            if (e.target.tagName.toLowerCase() === 'input' || e.target.classList.contains('delete-node-btn') || isConnecting) return;
+            isDragging = true;
+            document.querySelectorAll('.node').forEach(n => n.style.zIndex = 10);
+            nodeEl.style.zIndex = 20;
+            const rect = nodeEl.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const workspaceRect = workspace.getBoundingClientRect();
+                nodeObj.x = e.clientX - workspaceRect.left - offsetX;
+                nodeObj.y = e.clientY - workspaceRect.top - offsetY;
+                
+                nodeObj.x = Math.max(0, Math.min(nodeObj.x, workspaceRect.width - nodeEl.offsetWidth));
+                nodeObj.y = Math.max(0, Math.min(nodeObj.y, workspaceRect.height - nodeEl.offsetHeight));
+
+                nodeEl.style.left = nodeObj.x + 'px';
+                nodeEl.style.top = nodeObj.y + 'px';
+                drawPipelines();
+            }
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; });
+        workspace.appendChild(nodeEl);
     }
 
-    function deleteNode(e, id) { e.stopPropagation(); if(confirm(i18n[currentLang].deleteNodeConfirm)) { nodes = nodes.filter(n => n.id !== id); pipelines = pipelines.filter(p => p.from !== id && p.to !== id); document.getElementById(id).remove(); drawPipelines(); } }
+    function updateNodeId(id, newCustomId) {
+        const node = nodes.find(n => n.id === id);
+        if (node) {
+            node.customId = newCustomId;
+            const nodeEl = document.getElementById(id);
+            if (nodeEl) {
+                nodeEl.querySelector('.static-id-text').innerText = newCustomId;
+            }
+        }
+    }
 
-    function startConnecting(type) { isConnecting = true; currentPipeType = type; document.getElementById('conn-hint').innerText = 'Select first component...'; }
-    function handleNodeClickForConnection(id) { if (!firstNode) { firstNode = id; } else if (firstNode !== id) { pipelines.push({ from: firstNode, to: id, type: currentPipeType }); drawPipelines(); isConnecting = false; firstNode = null; } }
+    function syncAllStaticTexts() {
+        nodes.forEach(node => {
+            const nodeEl = document.getElementById(node.id);
+            if (nodeEl) {
+                const inputVal = nodeEl.querySelector('.node-id-input').value;
+                node.customId = inputVal;
+                nodeEl.querySelector('.static-id-text').innerText = inputVal;
+            }
+        });
+    }
+
+    // 刪除元件
+    function deleteNode(event, id) {
+        event.stopPropagation(); 
+        if(confirm(i18n[currentLang].deleteNodeConfirm)) {
+            nodes = nodes.filter(n => n.id !== id);
+            pipelines = pipelines.filter(p => p.from !== id && p.to !== id);
+            const el = document.getElementById(id);
+            if(el) el.remove();
+            drawPipelines();
+        }
+    }
+
+    // 連線管理
+    function startConnecting(type) {
+        isConnecting = true;
+        currentPipeType = type;
+        firstNode = null;
+        document.getElementById('conn-hint').innerHTML = type === 'cold' ? i18n[currentLang].coldPipeStart : i18n[currentLang].hotPipeStart;
+    }
+
+    function handleNodeClickForConnection(nodeId) {
+        if (!firstNode) {
+            firstNode = nodeId;
+            document.getElementById('conn-hint').innerText = 'Select second component (Destination)...';
+        } else {
+            if (firstNode !== nodeId) {
+                pipelines.push({ from: firstNode, to: nodeId, type: currentPipeType });
+                drawPipelines();
+            }
+            isConnecting = false;
+            firstNode = null;
+            document.getElementById('conn-hint').innerText = i18n[currentLang].hint;
+        }
+    }
 
     function drawPipelines() {
-        const svg = document.getElementById('svg-layer'); svg.innerHTML = '<defs></defs>';
-        pipelines.forEach((p,i) => {
-            const e1 = document.getElementById(p.from), e2 = document.getElementById(p.to);
-            if(!e1 || !e2) return;
-            const x1 = parseInt(e1.style.left)+70, y1 = parseInt(e1.style.top)+70, x2 = parseInt(e2.style.left)+70, y2 = parseInt(e2.style.top)+70;
-            const off = p.type==='cold'?-12:12;
-            const pathData = `M ${x1+off} ${y1+off} L ${x1+off} ${(y1+y2)/2} L ${x2+off} ${(y1+y2)/2} L ${x2+off} ${y2+off}`;
-            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathData); path.setAttribute('stroke', p.type==='cold'?'var(--cold-pipe)':'var(--hot-pipe)'); path.setAttribute('stroke-width','3'); path.setAttribute('fill','none');
-            g.appendChild(path);
-            const len = Math.abs(y1-y2) + Math.abs(x1-x2);
-            for(let d=20; d<len-20; d+=40) {
-                const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                tri.setAttribute('points', '-5,-4 5,0 -5,4'); tri.setAttribute('fill', p.type==='cold'?'var(--cold-pipe)':'var(--hot-pipe)');
-                let x, y; if(d < Math.abs((y1+y2)/2-y1)) { x=x1+off; y=y1+off + d*((y2+y1)/2>y1?1:-1); } else if(d < Math.abs((y1+y2)/2-y1)+Math.abs(x2-x1)) { x=x1+off + (d-Math.abs((y1+y2)/2-y1))*(x2>x1?1:-1); y=(y1+y2)/2+off; } else { x=x2+off; y=(y1+y2)/2+off + (d-Math.abs((y1+y2)/2-y1)-Math.abs(x2-x1))*(y2>(y1+y2)/2?1:-1); }
-                tri.setAttribute('transform', `translate(${x}, ${y}) rotate(${Math.atan2(y2-y1, x2-x1)*180/Math.PI})`);
-                g.appendChild(tri);
-            }
-            g.onclick = () => { if(confirm(i18n[currentLang].deletePipeConfirm)) { pipelines.splice(i,1); drawPipelines(); } };
-            svg.appendChild(g);
+        const svg = document.getElementById('svg-layer');
+        const defsContent = svg.querySelector('defs').outerHTML;
+        svg.innerHTML = defsContent; 
+        svg.style.pointerEvents = 'auto';
+
+        pipelines.forEach((pipe, index) => {
+            const el1 = document.getElementById(pipe.from);
+            const el2 = document.getElementById(pipe.to);
+            if (!el1 || !el2) return;
+
+            const x1 = el1.offsetLeft + el1.offsetWidth / 2;
+            const y1 = el1.offsetTop + (el1.offsetHeight / 2) - 15; 
+            const x2 = el2.offsetLeft + el2.offsetWidth / 2;
+            const y2 = el2.offsetTop + (el2.offsetHeight / 2) - 15;
+
+            const offset = pipe.type === 'cold' ? -12 : 12;
+            const cx1 = x1 + offset;
+            const cy1 = y1 + offset;
+            const cx2 = x2 + offset;
+            const cy2 = y2 + offset;
+            const midY = (cy1 + cy2) / 2;
+
+            const pathData = `M ${cx1} ${cy1} L ${cx1} ${midY} L ${cx2} ${midY} L ${cx2} ${cy2}`;
+
+            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            group.style.cursor = 'pointer';
+
+            const baseLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            baseLine.setAttribute('d', pathData);
+            baseLine.setAttribute('fill', 'none');
+            baseLine.setAttribute('stroke', pipe.type === 'cold' ? 'var(--cold-pipe)' : 'var(--hot-pipe)');
+            baseLine.setAttribute('stroke-width', '2');
+            baseLine.setAttribute('opacity', '0.35');
+            group.appendChild(baseLine);
+
+            drawArrowsOnSegment(group, cx1, cy1, cx1, midY, pipe.type); 
+            drawArrowsOnSegment(group, cx1, midY, cx2, midY, pipe.type); 
+            drawArrowsOnSegment(group, cx2, midY, cx2, cy2, pipe.type); 
+
+            const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hitArea.setAttribute('d', pathData);
+            hitArea.setAttribute('fill', 'none');
+            hitArea.setAttribute('stroke', 'transparent');
+            hitArea.setAttribute('stroke-width', '25');
+
+            group.addEventListener('mouseenter', () => {
+                baseLine.setAttribute('stroke-width', '4');
+                baseLine.setAttribute('opacity', '0.7');
+            });
+            group.addEventListener('mouseleave', () => {
+                baseLine.setAttribute('stroke-width', '2');
+                baseLine.setAttribute('opacity', '0.35');
+            });
+            group.addEventListener('click', () => {
+                if(confirm(i18n[currentLang].deletePipeConfirm)) {
+                    pipelines.splice(index, 1);
+                    drawPipelines();
+                }
+            });
+
+            group.appendChild(hitArea);
+            svg.appendChild(group);
         });
     }
 
-    function syncAllStaticTexts() { nodes.forEach(n => { const el = document.getElementById(n.id); if(el) el.querySelector('.static-id-text').innerText = el.querySelector('.node-id-input').value; }); }
-    function resetCanvas() { nodes = []; pipelines = []; nodeIdCounter = 1; document.querySelectorAll('.node').forEach(e => e.remove()); drawPipelines(); addNode('Data Center', false); }
+    function drawArrowsOnSegment(group, xStart, yStart, xEnd, yEnd, type) {
+        const dx = xEnd - xStart;
+        const dy = yEnd - yStart;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 15) return; 
+
+        const arrowSpacing = 25; 
+        const arrowColor = type === 'cold' ? 'var(--cold-pipe)' : 'var(--hot-pipe)';
+        const angle = Math.atan2(dy, dx); 
+        
+        for (let dist = 15; dist < len - 10; dist += arrowSpacing) {
+            const pct = dist / len;
+            const x = xStart + dx * pct;
+            const y = yStart + dy * pct;
+            
+            const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            triangle.setAttribute('points', '-6,-4 4,0 -6,4');
+            triangle.setAttribute('fill', arrowColor);
+            triangle.setAttribute('transform', `translate(${x}, ${y}) rotate(${angle * 180 / Math.PI})`);
+            triangle.setAttribute('class', type === 'cold' ? 'glow-cold' : 'glow-hot');
+            group.appendChild(triangle);
+        }
+    }
+
+    // 重置
+    function resetCanvas() {
+        nodes = [];
+        pipelines = [];
+        nodeIdCounter = 1;
+        document.querySelectorAll('.node').forEach(e => e.remove());
+        drawPipelines();
+        document.getElementById('conn-hint').innerText = i18n[currentLang].hint;
+        addNode('Data Center', false);
+    }
+
+    // 匯出 JSON 配置
+    function exportCode() {
+        syncAllStaticTexts(); 
+        const outputData = {
+            metadata: { generatedAt: new Date().toISOString(), system: "HVAC Builder Pro" },
+            components: nodes.map(n => ({ id: n.customId, type: n.type, position: {x: n.x, y: n.y} })),
+            connections: pipelines.map(p => {
+                const fromNode = nodes.find(n => n.id === p.from);
+                const toNode = nodes.find(n => n.id === p.to);
+                return { source: fromNode.customId, target: toNode.customId, pipeType: p.type };
+            })
+        };
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(outputData, null, 2));
+        const link = document.createElement('a');
+        link.href = dataStr;
+        link.download = "hvac_system_config.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    // 修正：PNG 匯出截圖功能 (消除遮蔽與空白)
     function exportPNG() {
-        syncAllStaticTexts();
-        document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'none');
-        document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'block');
-        // 重置為初始視圖截圖
-        const oldTrans = wrapper.style.transform;
-        wrapper.style.transform = 'scale(1) translate(0,0)';
-        html2canvas(document.getElementById('workspace'), {backgroundColor: '#f4f7f9', scale: 2}).then(canvas => {
-            const link = document.createElement('a'); link.download = 'hvac.png'; link.href = canvas.toDataURL(); link.click();
-            wrapper.style.transform = oldTrans;
-            document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'block');
-            document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'none');
+        const workspace = document.getElementById('workspace');
+        
+        syncAllStaticTexts(); // 強制完全同步
+
+        // 截圖前暫時隱藏不必要及限制渲染的 DOM 元素
+        document.getElementById('connection-controls').style.display = 'none'; 
+        document.getElementById('flaticon-attribution').style.display = 'none';
+        document.querySelectorAll('.delete-node-btn').forEach(btn => btn.style.display = 'none');
+        
+        // 關鍵：將 input 隱藏，打開純文字 span
+        document.querySelectorAll('.node-id-input').forEach(input => input.style.display = 'none');
+        document.querySelectorAll('.static-id-text').forEach(text => text.style.display = 'block');
+        
+        html2canvas(workspace, { backgroundColor: '#f4f7f9', scale: 2 }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'hvac_diagram.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            // 截圖完畢後，完美無痕還原所有 UI 狀態
+            document.getElementById('connection-controls').style.display = 'flex'; 
+            document.getElementById('flaticon-attribution').style.display = 'block';
+            document.querySelectorAll('.delete-node-btn').forEach(btn => btn.style.display = 'flex');
+            
+            document.querySelectorAll('.node-id-input').forEach(input => input.style.display = 'block');
+            document.querySelectorAll('.static-id-text').forEach(text => text.style.display = 'none');
         });
     }
 
-    renderSidebar(); addNode('Data Center', false);
+    // 初始化
+    renderSidebar();
+    addNode('Data Center', false); 
+
 </script>
 </body>
 </html>
