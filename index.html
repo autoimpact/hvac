@@ -7,16 +7,15 @@
     <style>
         :root {
             --brand-blue: #0087DC; --brand-cyan: #64D7D7; --brand-green: #B9EB5F;
-            --bg-base: #f4f7f9; --bg-panel: #ffffff; --border-light: #e2e8f0; --border-dark: #cbd5e1;
-            --text-primary: #1e293b; --text-secondary: #475569;
+            --bg-base: #f4f7f9; --bg-panel: #ffffff; --border-dark: #cbd5e1;
             --cold-pipe: #0087DC; --hot-pipe: #ef4444;
         }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: var(--bg-base); }
         
         #sidebar { width: 320px; background: var(--bg-panel); border-right: 1px solid var(--border-dark); z-index: 50; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; font-weight: 700; border-bottom: 1px solid var(--border-light); border-left: 6px solid var(--brand-blue); }
+        .sidebar-header { padding: 20px; font-weight: 700; border-bottom: 1px solid var(--border-dark); border-left: 6px solid var(--brand-blue); }
         .component-list { padding: 20px 15px; overflow-y: auto; flex: 1; }
-        .component-btn { width: 100%; padding: 12px; margin-bottom: 10px; background: white; border: 1px solid var(--border-light); cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .component-btn { width: 100%; padding: 12px; margin-bottom: 10px; background: white; border: 1px solid var(--border-dark); cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
         .component-btn:hover { border-color: var(--brand-cyan); box-shadow: 0 4px 8px rgba(100,215,215,0.2); }
         .component-btn img { height: 38px; mix-blend-mode: multiply; }
         
@@ -24,18 +23,28 @@
         #toolbar { height: 64px; padding: 0 25px; display: flex; align-items: center; gap: 15px; background: var(--bg-panel); border-bottom: 1px solid var(--border-dark); }
         .tool-btn { padding: 8px 16px; border: 1px solid var(--border-dark); cursor: pointer; border-radius: 4px; font-weight: 600; background: white; }
         .btn-output { background: var(--brand-blue); color: white; border: none; }
+        
+        /* Language Switch */
+        .switch-container { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; }
+        .lang-label { color: var(--text-secondary); transition: 0.2s; }
+        .lang-label.active { color: var(--brand-blue); }
+        .switch { position: relative; display: inline-block; width: 42px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-dark); transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--brand-cyan); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
-        /* Workspace Zoom/Pan */
+        /* Workspace */
         #workspace { flex: 1; position: relative; overflow: hidden; background-image: radial-gradient(var(--border-dark) 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; }
         #transform-wrapper { position: absolute; transform-origin: 0 0; width: 5000px; height: 5000px; }
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
-        .node { position: absolute; padding: 10px; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 140px; border: 2px solid transparent; border-radius: 8px; transition: border 0.2s; }
+        .node { position: absolute; padding: 10px; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 140px; border: 2px solid transparent; border-radius: 8px; transition: border 0.2s; overflow: visible !important; }
         .node:hover { border-color: var(--brand-green); background: rgba(185,235,95,0.05); }
         .node img { width: 100px; pointer-events: none; }
         .node-info { background: #fff; padding: 6px; border-radius: 6px; border: 1px solid var(--border-dark); width: 110px; margin-top: 8px; }
-        .node-title { font-size: 0.8rem; font-weight: 600; text-align: center; margin-bottom: 4px; }
-        .node input, .static-id-text { width: 95%; background: var(--bg-base); border: 1px solid var(--border-light); color: var(--brand-blue); font-weight: bold; text-align: center; border-radius: 4px; padding: 4px; font-size: 0.75rem; box-sizing: border-box; }
+        .node input, .static-id-text { width: 95%; background: var(--bg-base); border: 1px solid var(--border-dark); color: var(--brand-blue); font-weight: bold; text-align: center; border-radius: 4px; padding: 4px; font-size: 0.75rem; box-sizing: border-box; }
         .static-id-text { display: none; }
         
         .delete-node-btn { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; z-index: 20; }
@@ -50,18 +59,21 @@
     </style>
 </head>
 <body>
-
     <div id="sidebar">
         <div class="sidebar-header">Components</div>
         <div class="component-list" id="component-list"></div>
     </div>
-
     <div id="main">
         <div id="toolbar">
             <span id="conn-hint">💡 滾輪縮放 | 空白鍵+拖曳平移</span>
-            <button class="tool-btn btn-reset" onclick="resetCanvas()">Reset</button>
-            <button class="tool-btn btn-output" onclick="exportCode()">JSON</button>
-            <button class="tool-btn btn-output" onclick="exportPNG()">PNG</button>
+            <button class="tool-btn" onclick="resetCanvas()">Reset</button>
+            <button class="tool-btn btn-output" onclick="exportCode()">Export JSON</button>
+            <button class="tool-btn btn-output" onclick="exportPNG()">Export PNG</button>
+            <div class="switch-container">
+                <span id="lang-label-en" class="lang-label active">EN</span>
+                <label class="switch"><input type="checkbox" id="lang-switch" onchange="toggleLanguage()"><span class="slider"></span></label>
+                <span id="lang-label-tw" class="lang-label">繁中</span>
+            </div>
         </div>
         <div id="workspace">
             <div id="transform-wrapper">
@@ -87,79 +99,102 @@
         'Data Center': 'data:image/png;base64,...'
     };
 
-    let nodes = [], pipelines = [], scale = 1, transX = 0, transY = 0, isConnecting = false, currentPipeType = null, firstNode = null;
+    const i18n = {
+        'tw': { title: '設備元件庫', reset: '重置架構', hint: '💡 提示：點擊元件可拖拉，游標移至元件或管線上可點擊刪除。', deleteNodeConfirm: '確定刪除？', deletePipeConfirm: '確定刪除管線？', components: { 'Chiller': '冰水機', 'Pump-CS': '定頻幫浦', 'Pump-VS': '變頻幫浦', 'Cooling Tower': '冷卻水塔', 'DX Outdoor': '氣冷室外機', 'Dry Cooler': '乾冷器', 'Heat Exchanger': '板式熱交換器', 'Data Center': 'Data Center' } },
+        'en': { title: 'Components Library', reset: 'Reset Layout', hint: '💡 Hint: Drag to move. Hover over node or pipe to delete.', deleteNodeConfirm: 'Delete component?', deletePipeConfirm: 'Delete pipeline?', components: { 'Chiller': 'Chiller', 'Pump-CS': 'Pump-CS', 'Pump-VS': 'Pump-VS', 'Cooling Tower': 'Cooling Tower', 'DX Outdoor': 'DX Outdoor', 'Dry Cooler': 'Dry Cooler', 'Heat Exchanger': 'Heat Exchanger', 'Data Center': 'Data Center' } }
+    };
+
+    let nodes = [], pipelines = [], scale = 1, transX = 0, transY = 0, isConnecting = false, currentPipeType = null, firstNode = null, currentLang = 'en';
     const wrapper = document.getElementById('transform-wrapper');
 
-    // Zoom/Pan
-    document.getElementById('workspace').addEventListener('wheel', e => {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        scale = Math.min(Math.max(scale * delta, 0.5), 2);
-        applyTransform();
-    });
+    document.getElementById('workspace').addEventListener('wheel', e => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; scale = Math.min(Math.max(scale * delta, 0.5), 2); applyTransform(); });
 
     let isPanning = false, lastX, lastY;
-    document.getElementById('workspace').addEventListener('mousedown', e => {
-        if(e.code === 'Space' || e.button === 1) { isPanning = true; lastX = e.clientX; lastY = e.clientY; }
-    });
-    window.addEventListener('mousemove', e => {
-        if(!isPanning) return;
-        transX += (e.clientX - lastX); transY += (e.clientY - lastY);
-        lastX = e.clientX; lastY = e.clientY; applyTransform();
-    });
+    document.getElementById('workspace').addEventListener('mousedown', e => { if(e.code === 'Space' || e.button === 1) { isPanning = true; lastX = e.clientX; lastY = e.clientY; } });
+    window.addEventListener('mousemove', e => { if(!isPanning) return; transX += (e.clientX - lastX); transY += (e.clientY - lastY); lastX = e.clientX; lastY = e.clientY; applyTransform(); });
     window.addEventListener('mouseup', () => isPanning = false);
-    document.addEventListener('keydown', e => { if(e.code === 'Space') document.body.style.cursor = 'grab'; });
-    document.addEventListener('keyup', e => { if(e.code === 'Space') document.body.style.cursor = 'default'; });
-
     function applyTransform() { wrapper.style.transform = `scale(${scale}) translate(${transX/scale}px, ${transY/scale}px)`; }
 
+    function renderSidebar() {
+        const list = document.getElementById('component-list'); list.innerHTML = '';
+        Object.keys(i18n.en.components).forEach(key => {
+            if (key === 'Data Center') return;
+            const btn = document.createElement('button');
+            btn.className = 'component-btn';
+            btn.innerHTML = `<span>${i18n[currentLang].components[key]}</span> <img src="${componentImages[key]}">`;
+            btn.onclick = () => addNode(key);
+            list.appendChild(btn);
+        });
+    }
+
+    function toggleLanguage() {
+        currentLang = document.getElementById('lang-switch').checked ? 'tw' : 'en';
+        document.getElementById('lang-label-tw').classList.toggle('active', currentLang === 'tw');
+        document.getElementById('lang-label-en').classList.toggle('active', currentLang === 'en');
+        renderSidebar();
+        document.querySelectorAll('.node-title').forEach(el => el.innerText = i18n[currentLang].components[el.dataset.key]);
+    }
+
     function addNode(type, isDeletable = true) {
-        const nodeObj = { id: 'n'+Date.now(), type, customId: type.replace(/ /g,'_')+'_'+nodes.length, x: type==='Data Center'?50:250, y: type==='Data Center'?50:150 };
+        const nodeObj = { id: 'n'+Date.now(), type, customId: type==='Data Center'?'Data_Center':type.replace(/ /g,'_')+'_'+nodes.length, x: type==='Data Center'?50:250, y: type==='Data Center'?50:150 };
         nodes.push(nodeObj);
         const el = document.createElement('div');
         el.className = `node ${!isDeletable?'no-delete':''}`; el.id = nodeObj.id;
         el.style.left = nodeObj.x + 'px'; el.style.top = nodeObj.y + 'px';
-        el.innerHTML = `${isDeletable ? `<div class="delete-node-btn" onclick="deleteNode(event, '${nodeObj.id}')">✖</div>` : ''}<img src="${componentImages[type]}"><div class="node-info"><div class="node-title">${type}</div><input type="text" class="node-id-input" value="${nodeObj.customId}"><span class="static-id-text">${nodeObj.customId}</span></div>`;
+        el.innerHTML = `${isDeletable ? `<div class="delete-node-btn" onclick="deleteNode(event, '${nodeObj.id}')">✖</div>` : ''}<img src="${componentImages[type]}"><div class="node-info"><div class="node-title" data-key="${type}">${i18n[currentLang].components[type]}</div><input type="text" class="node-id-input" value="${nodeObj.customId}"><span class="static-id-text">${nodeObj.customId}</span></div>`;
         wrapper.appendChild(el);
-        // Drag logic
-        el.addEventListener('mousedown', e => {
-            if(e.target.tagName==='INPUT' || isConnecting) return;
-            let sx=e.clientX, sy=e.clientY;
-            const move = e => { el.style.left = (parseInt(el.style.left) + (e.clientX-sx)/scale) + 'px'; el.style.top = (parseInt(el.style.top) + (e.clientY-sy)/scale) + 'px'; sx=e.clientX; sy=e.clientY; drawPipelines(); };
-            document.addEventListener('mousemove', move); document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move));
-        });
-        el.onclick = () => isConnecting && handleConn(nodeObj.id);
+        el.addEventListener('mousedown', e => { if(e.target.tagName==='INPUT' || isConnecting || e.target.classList.contains('delete-node-btn')) return; let sx=e.clientX, sy=e.clientY; const move = e => { el.style.left = (parseInt(el.style.left) + (e.clientX-sx)/scale) + 'px'; el.style.top = (parseInt(el.style.top) + (e.clientY-sy)/scale) + 'px'; sx=e.clientX; sy=e.clientY; drawPipelines(); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move)); });
+        el.onclick = () => isConnecting && handleNodeClickForConnection(nodeObj.id);
     }
 
+    function deleteNode(e, id) { e.stopPropagation(); if(confirm(i18n[currentLang].deleteNodeConfirm)) { nodes = nodes.filter(n => n.id !== id); pipelines = pipelines.filter(p => p.from !== id && p.to !== id); document.getElementById(id).remove(); drawPipelines(); } }
+
+    function startConnecting(type) { isConnecting = true; currentPipeType = type; document.getElementById('conn-hint').innerText = 'Select first component...'; }
+    function handleNodeClickForConnection(id) { if (!firstNode) { firstNode = id; } else if (firstNode !== id) { pipelines.push({ from: firstNode, to: id, type: currentPipeType }); drawPipelines(); isConnecting = false; firstNode = null; } }
+
     function drawPipelines() {
-        const svg = document.getElementById('svg-layer'); svg.innerHTML = '';
+        const svg = document.getElementById('svg-layer'); svg.innerHTML = '<defs></defs>';
         pipelines.forEach((p,i) => {
             const e1 = document.getElementById(p.from), e2 = document.getElementById(p.to);
             if(!e1 || !e2) return;
             const x1 = parseInt(e1.style.left)+70, y1 = parseInt(e1.style.top)+70, x2 = parseInt(e2.style.left)+70, y2 = parseInt(e2.style.top)+70;
-            const off = p.type==='cold'? -12: 12;
+            const off = p.type==='cold'?-12:12;
             const pathData = `M ${x1+off} ${y1+off} L ${x1+off} ${(y1+y2)/2} L ${x2+off} ${(y1+y2)/2} L ${x2+off} ${y2+off}`;
             const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', pathData); path.setAttribute('stroke', p.type==='cold'?'var(--cold-pipe)':'var(--hot-pipe)'); path.setAttribute('stroke-width','3'); path.setAttribute('fill','none');
             g.appendChild(path);
-            // Arrows
             const len = Math.abs(y1-y2) + Math.abs(x1-x2);
             for(let d=20; d<len-20; d+=40) {
                 const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
                 tri.setAttribute('points', '-5,-4 5,0 -5,4'); tri.setAttribute('fill', p.type==='cold'?'var(--cold-pipe)':'var(--hot-pipe)');
-                // Simplified arrow placement along path
-                tri.setAttribute('transform', `translate(${x1+off}, ${y1+off+(d*(y2-y1)/len)})`);
+                let x, y; if(d < Math.abs((y1+y2)/2-y1)) { x=x1+off; y=y1+off + d*((y2+y1)/2>y1?1:-1); } else if(d < Math.abs((y1+y2)/2-y1)+Math.abs(x2-x1)) { x=x1+off + (d-Math.abs((y1+y2)/2-y1))*(x2>x1?1:-1); y=(y1+y2)/2+off; } else { x=x2+off; y=(y1+y2)/2+off + (d-Math.abs((y1+y2)/2-y1)-Math.abs(x2-x1))*(y2>(y1+y2)/2?1:-1); }
+                tri.setAttribute('transform', `translate(${x}, ${y}) rotate(${Math.atan2(y2-y1, x2-x1)*180/Math.PI})`);
                 g.appendChild(tri);
             }
-            g.onclick = () => { if(confirm('Delete pipe?')) { pipelines.splice(i,1); drawPipelines(); } };
+            g.onclick = () => { if(confirm(i18n[currentLang].deletePipeConfirm)) { pipelines.splice(i,1); drawPipelines(); } };
             svg.appendChild(g);
         });
     }
 
-    // Init
-    Object.keys(componentImages).forEach(k => { if(k!=='Data Center'){ const b=document.createElement('button'); b.className='component-btn'; b.innerHTML=`<span>${k}</span><img src="${componentImages[k]}">`; b.onclick=()=>addNode(k); document.getElementById('component-list').appendChild(b); }});
-    addNode('Data Center', false);
+    function syncAllStaticTexts() { nodes.forEach(n => { const el = document.getElementById(n.id); if(el) el.querySelector('.static-id-text').innerText = el.querySelector('.node-id-input').value; }); }
+    function resetCanvas() { nodes = []; pipelines = []; nodeIdCounter = 1; document.querySelectorAll('.node').forEach(e => e.remove()); drawPipelines(); addNode('Data Center', false); }
+    function exportPNG() {
+        syncAllStaticTexts();
+        document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'none');
+        document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'block');
+        // 重置為初始視圖截圖
+        const oldTrans = wrapper.style.transform;
+        wrapper.style.transform = 'scale(1) translate(0,0)';
+        html2canvas(document.getElementById('workspace'), {backgroundColor: '#f4f7f9', scale: 2}).then(canvas => {
+            const link = document.createElement('a'); link.download = 'hvac.png'; link.href = canvas.toDataURL(); link.click();
+            wrapper.style.transform = oldTrans;
+            document.querySelectorAll('.node-id-input').forEach(i => i.style.display = 'block');
+            document.querySelectorAll('.static-id-text').forEach(t => t.style.display = 'none');
+        });
+    }
+
+    renderSidebar(); addNode('Data Center', false);
 </script>
 </body>
 </html>
