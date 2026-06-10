@@ -737,7 +737,7 @@
     function handleNodeClickForConnection(nodeId) {
         if (!firstNode) {
             firstNode = nodeId;
-            document.getElementById('conn-hint').innerText = 'Select second component (Destination)...';
+            document.getElementById('conn-hint').innerText = i18n[currentLang].selectSecond;
         } else {
             if (firstNode !== nodeId) {
                 pipelines.push({ from: firstNode, to: nodeId, type: currentPipeType });
