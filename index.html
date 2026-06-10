@@ -21,7 +21,7 @@
             --text-secondary: #475569;
             
             --cold-pipe: #0087DC;     
-            --hot-pipe: #ef4444;      
+            --hot-pipe: #90caf9;      
         }
 
         body { 
@@ -475,8 +475,8 @@
             </svg>
             
             <div id="connection-controls">
-                <button class="pipe-btn btn-cold" onclick="startConnecting('cold')">Cold Pipe</button>
-                <button class="pipe-btn btn-hot" onclick="startConnecting('hot')">Hot Pipe</button>
+                <button class="pipe-btn btn-cold" onclick="startConnecting('cold')">Chilled Water Loop</button>
+                <button class="pipe-btn btn-hot" onclick="startConnecting('hot')">Cool Water Loop</button>
             </div>
 
             <div id="flaticon-attribution">
@@ -508,8 +508,8 @@
             hint: '💡 提示：點擊元件可拖拉，游標移至元件或管線上可點擊刪除。',
             deleteNodeConfirm: '確定要刪除這個元件嗎？\n(與其相連的管線也會一併清除)',
             deletePipeConfirm: '確定要刪除這條管線嗎？',
-            coldPipeStart: '<span style="color:var(--cold-pipe);">選擇第一個元件 (正在建立冷水管線)...</span>',
-            hotPipeStart: '<span style="color:var(--hot-pipe);">選擇第一個元件 (正在建立熱水管線)...</span>',
+            ccoldPipeStart: '<span style="color:var(--cold-pipe);">正在建立冰水迴路...</span>',
+            hotPipeStart: '<span style="color:var(--hot-pipe);">正在建立冷水迴路...</span>',
             catHVAC: '空調設備 (HVAC Units)',
             catWhiteSpace: '白空間 / 負載端 (White Space)',
             components: {
